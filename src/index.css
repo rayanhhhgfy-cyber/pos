@@ -1,0 +1,243 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Courier New', 'Consolas', 'SF Mono', 'Fira Code', monospace;
+  }
+
+  body {
+    @apply bg-[#0a0a0a] text-[#f4f4f5] antialiased overflow-hidden;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #18181b;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
+  }
+
+  input, select, textarea, button {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-[#059669] to-[#0f766e] text-white font-bold py-3 px-6 rounded-lg
+           hover:brightness-110 active:brightness-90 transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed shadow-pos;
+  }
+
+  .btn-secondary {
+    @apply bg-gradient-to-b from-[#1e293b] to-[#18181b] text-[#e4e4e7] font-medium py-2 px-4 rounded-lg
+           border border-[#27272a] hover:border-[#3f3f46] active:brightness-90 transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply bg-gradient-to-r from-[#b91c1c] to-[#9f1239] text-white font-medium py-2 px-4 rounded-lg
+           hover:brightness-110 active:brightness-90 transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed shadow-pos;
+  }
+
+  .card-panel {
+    @apply bg-[#1e293b] border border-[#27272a] rounded-xl shadow-pos;
+  }
+
+  .input-pos {
+    @apply bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-2 text-[#f4f4f5]
+           placeholder:text-[#52525b] focus:outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669]/30
+           transition-all duration-150;
+  }
+
+  .badge-low-stock {
+    @apply bg-gradient-to-r from-[#b91c1c] to-[#9f1239] text-white text-xs px-2 py-0.5 rounded-full font-bold;
+  }
+
+  .badge-in-stock {
+    @apply bg-[#059669]/20 text-[#34d399] text-xs px-2 py-0.5 rounded-full;
+  }
+
+  .kbd {
+    @apply bg-[#27272a] border border-[#3f3f46] text-[#a1a1aa] text-xs px-1.5 py-0.5 rounded;
+    font-family: inherit;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-[#059669] to-[#0f766e] bg-clip-text text-transparent;
+  }
+
+  .nav-tab {
+    @apply flex items-center gap-2 px-4 py-3 rounded-lg
+           text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-[#27272a]/50
+           transition-all duration-150 cursor-pointer select-none;
+  }
+
+  .nav-tab.active {
+    @apply bg-[#27272a] text-[#f4f4f5] border-l-2 border-[#059669];
+  }
+
+  .keypad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .keypad-btn {
+    @apply bg-gradient-to-b from-[#1e293b] to-[#18181b] text-[#e4e4e7] text-xl font-bold
+           border border-[#27272a] rounded-xl h-14 active:brightness-125 active:scale-95
+           transition-all duration-75 select-none cursor-pointer;
+  }
+
+  .keypad-btn.action {
+    @apply bg-gradient-to-b from-[#059669] to-[#0f766e] border-[#059669];
+  }
+
+  .keypad-btn.wide {
+    grid-column: span 2;
+  }
+
+  .keypad-btn.danger {
+    @apply bg-gradient-to-b from-[#b91c1c] to-[#9f1239] border-[#b91c1c];
+  }
+}
+
+@media print {
+  body {
+    @apply bg-white text-black overflow-visible;
+  }
+
+  body > div:not(#receipt-root) {
+    display: none !important;
+  }
+
+  #receipt-root {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 8px;
+  }
+
+  .receipt-print {
+    display: block !important;
+    font-family: 'Courier New', 'Consolas', monospace !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    color: black !important;
+    background: white !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+
+  .receipt-print * {
+    color: black !important;
+    background: transparent !important;
+  }
+
+  .receipt-header {
+    text-align: center !important;
+    margin-bottom: 8px !important;
+  }
+
+  .receipt-store-name {
+    font-size: 16px !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+  }
+
+  .receipt-divider {
+    border-top: 1px dashed black !important;
+    margin: 6px 0 !important;
+  }
+
+  .receipt-thick-divider {
+    border-top: 2px solid black !important;
+    margin: 6px 0 !important;
+  }
+
+  .receipt-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 1px 0 !important;
+  }
+
+  .receipt-qty {
+    width: 30px !important;
+    text-align: right !important;
+  }
+
+  .receipt-name {
+    flex: 1 !important;
+    padding-left: 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .receipt-price {
+    width: 70px !important;
+    text-align: right !important;
+  }
+
+  .receipt-total-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 2px 0 !important;
+    font-weight: bold !important;
+  }
+
+  .receipt-grand-total {
+    font-size: 14px !important;
+    font-weight: bold !important;
+  }
+
+  .receipt-footer {
+    text-align: center !important;
+    margin-top: 8px !important;
+    font-size: 10px !important;
+  }
+
+  @page {
+    margin: 0 !important;
+    size: 80mm auto !important;
+  }
+}
+
+/* RTL Support */
+[dir="rtl"] .nav-tab.active {
+  border-left: none;
+  border-right: 2px solid #059669;
+}
+
+[dir="rtl"] .receipt-item {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .receipt-total-row {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .space-x-reverse > * + * {
+  margin-right: 0.5rem;
+  margin-left: 0;
+}

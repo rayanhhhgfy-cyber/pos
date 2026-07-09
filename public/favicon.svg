@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect x="10" y="15" width="80" height="70" rx="8" fill="#27272a" stroke="#52525b" stroke-width="2"/>
+  <rect x="15" y="25" width="50" height="8" rx="2" fill="#a1a1aa"/>
+  <rect x="15" y="38" width="50" height="8" rx="2" fill="#a1a1aa"/>
+  <rect x="15" y="51" width="50" height="8" rx="2" fill="#a1a1aa"/>
+  <rect x="72" y="25" width="22" height="34" rx="4" fill="#059669"/>
+  <rect x="77" y="30" width="12" height="4" rx="1" fill="#a7f3d0"/>
+  <rect x="77" y="38" width="12" height="4" rx="1" fill="#a7f3d0"/>
+  <rect x="77" y="46" width="12" height="4" rx="1" fill="#a7f3d0"/>
+  <text x="50" y="90" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill="#f4f4f5">POS</text>
+</svg>

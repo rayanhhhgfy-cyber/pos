@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#18181b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="POS Terminal" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="POS Terminal" />
+    <meta name="description" content="Enterprise-grade offline-first Point of Sale terminal" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/pwa-192x192.svg" />
+    <title>POS Terminal</title>
+  </head>
+  <body class="bg-[#0a0a0a] text-[#f4f4f5] antialiased overflow-hidden">
+    <div id="root"></div>
+    <div id="receipt-root" class="hidden print:block"></div>
+    <div id="modal-root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
