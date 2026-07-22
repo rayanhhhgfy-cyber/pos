@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { posDB } from '../../db';
 import type { Product } from '../../types';
-import { parsePriceToCents, formatCents } from '../../utils/cents';
+import { parsePriceToCents, formatCents, toNumberInput } from '../../utils/cents';
 import { useConfigStore } from '../../stores/configStore';
 import { playSuccess } from '../../utils/audio';
 import { Plus, Search, Edit, Trash2, X, Save, Barcode, Package } from 'lucide-react';
@@ -16,6 +16,17 @@ function InventoryView() {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
+
+  const [priceInput, setPriceInput] = useState('');
+  const [costPriceInput, setCostPriceInput] = useState('');
+  const [stockInput, setStockInput] = useState('');
+
+  const formatOnBlur = (value: string, setter: (val: string) => void) => {
+    const parsed = parseFloat(value);
+    if (!isNaN(parsed)) {
+      setter(parsed.toFixed(2));
+    }
+  };
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -53,24 +64,30 @@ function InventoryView() {
 
   const openAdd = () => {
     setEditProduct({ barcode: '', name: '', price: 0 as any, costPrice: 0 as any, stock: 0, category: '' });
+    setPriceInput('');
+    setCostPriceInput('');
+    setStockInput('0');
     setModal('add');
   };
 
   const openEdit = (p: Product) => {
     setEditProduct({ ...p });
+    setPriceInput(typeof p.price === 'number' ? (p.price / 100).toFixed(2) : '0.00');
+    setCostPriceInput(typeof p.costPrice === 'number' ? (p.costPrice / 100).toFixed(2) : '0.00');
+    setStockInput(typeof p.stock === 'number' ? String(p.stock) : '0');
     setModal('edit');
   };
 
   const handleSave = async () => {
     if (!editProduct.name || !editProduct.barcode) return;
-    const priceCents = parsePriceToCents(String(editProduct.price ?? 0));
-    const costCents = parsePriceToCents(String(editProduct.costPrice ?? 0));
+    const priceCents = parsePriceToCents(priceInput);
+    const costCents = parsePriceToCents(costPriceInput);
     const data = {
       barcode: editProduct.barcode!,
       name: editProduct.name!,
       price: priceCents,
       costPrice: costCents,
-      stock: Math.max(0, parseInt(String(editProduct.stock ?? 0), 10) || 0),
+      stock: Math.max(0, parseInt(stockInput, 10) || 0),
       category: editProduct.category || '',
       updatedAt: Date.now(),
     };
@@ -265,34 +282,24 @@ function InventoryView() {
                   <label className="block text-xs text-[#a1a1aa] mb-1">Price ($)</label>
                   <input
                     className="input-pos w-full"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={
-                      typeof editProduct.price === 'number'
-                        ? (editProduct.price / 100).toFixed(2)
-                        : '0.00'
-                    }
-                    onChange={(e) =>
-                      setEditProduct((p) => ({ ...p, price: parsePriceToCents(e.target.value) }))
-                    }
+                    type="text"
+                    inputMode="decimal"
+                    value={priceInput}
+                    onChange={(e) => setPriceInput(toNumberInput(e.target.value))}
+                    onBlur={() => formatOnBlur(priceInput, setPriceInput)}
+                    placeholder="0.00"
                   />
                 </div>
                 <div>
                   <label className="block text-xs text-[#a1a1aa] mb-1">Cost Price ($)</label>
                   <input
                     className="input-pos w-full"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={
-                      typeof editProduct.costPrice === 'number'
-                        ? (editProduct.costPrice / 100).toFixed(2)
-                        : '0.00'
-                    }
-                    onChange={(e) =>
-                      setEditProduct((p) => ({ ...p, costPrice: parsePriceToCents(e.target.value) }))
-                    }
+                    type="text"
+                    inputMode="decimal"
+                    value={costPriceInput}
+                    onChange={(e) => setCostPriceInput(toNumberInput(e.target.value))}
+                    onBlur={() => formatOnBlur(costPriceInput, setCostPriceInput)}
+                    placeholder="0.00"
                   />
                 </div>
               </div>
@@ -301,12 +308,11 @@ function InventoryView() {
                   <label className="block text-xs text-[#a1a1aa] mb-1">Stock</label>
                   <input
                     className="input-pos w-full"
-                    type="number"
-                    min="0"
-                    value={editProduct.stock ?? 0}
-                    onChange={(e) =>
-                      setEditProduct((p) => ({ ...p, stock: parseInt(e.target.value, 10) || 0 }))
-                    }
+                    type="text"
+                    inputMode="numeric"
+                    value={stockInput}
+                    onChange={(e) => setStockInput(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="0"
                   />
                 </div>
                 <div className="relative">
