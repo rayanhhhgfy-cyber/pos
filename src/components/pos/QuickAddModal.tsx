@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { posDB } from '../../db';
-import { parsePriceToCents } from '../../utils/cents';
+import { parsePriceToCents, toNumberInput } from '../../utils/cents';
 import { useUIStore } from '../../stores/uiStore';
 import { useCartStore } from '../../stores/cartStore';
 import { useConfigStore } from '../../stores/configStore';
@@ -23,6 +23,13 @@ function QuickAddModal({ onClose }: QuickAddModalProps) {
   const [categories, setCategories] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
+
+  const formatOnBlur = (value: string, setter: (val: string) => void) => {
+    const parsed = parseFloat(value);
+    if (!isNaN(parsed)) {
+      setter(parsed.toFixed(2));
+    }
+  };
 
   useEffect(() => {
     posDB.products
@@ -99,11 +106,11 @@ function QuickAddModal({ onClose }: QuickAddModalProps) {
               <label className="block text-xs text-[#a1a1aa] mb-1">Price ($)</label>
               <input
                 className="input-pos w-full"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => setPrice(toNumberInput(e.target.value))}
+                onBlur={() => formatOnBlur(price, setPrice)}
                 placeholder="0.00"
               />
             </div>
@@ -111,10 +118,11 @@ function QuickAddModal({ onClose }: QuickAddModalProps) {
               <label className="block text-xs text-[#a1a1aa] mb-1">Stock</label>
               <input
                 className="input-pos w-full"
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
                 value={stock}
                 onChange={(e) => setStock(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="1"
               />
             </div>
           </div>
