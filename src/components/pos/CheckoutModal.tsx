@@ -132,10 +132,54 @@ function CheckoutModal({
             </div>
 
             <div className="card-panel p-3 text-center">
-              <p className="text-xs text-[#a1a1aa] mb-1">Cash Tendered</p>
-              <p className="text-2xl font-bold text-[#34d399] font-mono">
-                {currencySymbol}{(parseFloat(cashAmount || '0')).toFixed(2)}
-              </p>
+              <label className="block text-xs text-[#a1a1aa] mb-1.5">Cash Tendered</label>
+              <div className="relative max-w-[200px] mx-auto">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xl font-bold text-[#34d399] font-mono">
+                  {currencySymbol}
+                </span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="input-pos w-full text-center text-2xl font-bold text-[#34d399] pl-8 font-mono bg-[#18181b]/80"
+                  value={cashAmount}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9.]/g, '');
+                    setCashAmount(val);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && isEnough) {
+                      handleCashConfirm();
+                    }
+                  }}
+                  autoFocus
+                  placeholder="0.00"
+                />
+              </div>
+
+              {/* Quick Cash Presets */}
+              <div className="grid grid-cols-4 gap-1.5 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setCashAmount((total / 100).toFixed(2))}
+                  className="text-[10px] py-1.5 rounded bg-[#27272a] text-[#f4f4f5] hover:bg-[#3f3f46] font-bold font-mono transition-all"
+                >
+                  Exact
+                </button>
+                {[5, 10, 20, 50, 100].map((bill) => {
+                  const billVal = Math.ceil((total / 100) / bill) * bill;
+                  if (billVal * 100 < total) return null;
+                  return (
+                    <button
+                      key={bill}
+                      type="button"
+                      onClick={() => setCashAmount(billVal.toFixed(2))}
+                      className="text-[10px] py-1.5 rounded bg-[#27272a] text-[#f4f4f5] hover:bg-[#3f3f46] font-bold font-mono transition-all"
+                    >
+                      {currencySymbol}{billVal}
+                    </button>
+                  );
+                }).filter((b) => b !== null).slice(0, 3)}
+              </div>
             </div>
 
             {showChange && (
