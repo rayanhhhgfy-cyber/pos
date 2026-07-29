@@ -59,7 +59,7 @@ function POSView() {
     const receiptRoot = document.getElementById('receipt-root');
     const receiptPrint = document.querySelector('.receipt-print');
     if (receiptRoot && receiptPrint) {
-      receiptRoot.innerHTML = receiptPrint.innerHTML;
+      receiptRoot.innerHTML = receiptPrint.outerHTML;
       window.print();
       setTimeout(() => {
         receiptRoot.innerHTML = '';
