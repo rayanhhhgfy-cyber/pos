@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { posDB, DBBulkDiscount } from '../db';
+import { posDB, DBBulkDiscount, triggerLocalBackup } from '../db';
 import { asCents, Cents } from '../types/cents';
 import type { CartItem, PaymentMethod, Sale, SaleItem } from '../types';
 import {
@@ -260,6 +260,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       details: `Sale #${saleId}: ${totalItems} items, total ${formatCents(total, currencySymbol)}`,
       timestamp: Date.now(),
     });
+
+    await triggerLocalBackup();
 
     set({ items: [], discount: { type: 'none', value: 0 }, lastSale: sale });
     return sale;
