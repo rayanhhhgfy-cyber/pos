@@ -35,6 +35,10 @@
   input, select, textarea, button {
     font-family: inherit;
   }
+
+  #receipt-root {
+    display: none;
+  }
 }
 
 @layer components {

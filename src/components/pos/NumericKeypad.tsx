@@ -43,16 +43,18 @@ function NumericKeypad({
             return (
               <button
                 key="backspace"
+                type="button"
                 className="keypad-btn danger"
                 onClick={() => onInput('backspace')}
               >
-                <X className="w-5 h-5 mx-auto" />
+                <X className="w-5 h-5 mx-auto pointer-events-none" />
               </button>
             );
           }
           return (
             <button
               key={key}
+              type="button"
               className="keypad-btn"
               onClick={() => onInput(key)}
             >
@@ -61,6 +63,7 @@ function NumericKeypad({
           );
         })}
         <button
+          type="button"
           className="keypad-btn wide action"
           onClick={onConfirm}
         >
@@ -69,10 +72,11 @@ function NumericKeypad({
       </div>
       {onBack && (
         <button
+          type="button"
           onClick={onBack}
           className="btn-secondary w-full mt-2 text-sm flex items-center justify-center gap-1"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 pointer-events-none" />
           Back
         </button>
       )}

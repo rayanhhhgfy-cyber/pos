@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useLangStore } from '../../stores/langStore';
 import { exportDatabase, importDatabase, wipeAllData } from '../../utils/backup';
@@ -37,11 +37,11 @@ function SettingsView() {
   const [newRulePct, setNewRulePercentage] = useState('15');
   const [showInstallGuide, setShowInstallGuide] = useState(false);
 
-  useState(() => {
+  useEffect(() => {
     posDB.bulk_discounts.toArray().then((rules) => {
       setBulkRules(rules);
     });
-  });
+  }, []);
 
   const handleAddBulkRule = async () => {
     if (!newRuleBarcode) return;

@@ -226,8 +226,8 @@ function CartPanel({
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-[#52525b]">
             <ShoppingCart className="w-10 h-10 mb-2 opacity-50" />
-            <p className="text-sm">Cart is empty</p>
-            <p className="text-xs mt-1">Search products or scan barcode</p>
+            <p className="text-sm">{lang === 'ar' ? 'السلة فارغة' : 'Cart is empty'}</p>
+            <p className="text-xs mt-1">{lang === 'ar' ? 'ابحث عن منتجات أو امسح الباركود' : 'Search products or scan barcode'}</p>
           </div>
         ) : (
           items.map((item) => (
@@ -304,7 +304,7 @@ function CartPanel({
                         onClick={confirmQty}
                         className="text-[#059669] text-xs font-bold"
                       >
-                        OK
+                        {lang === 'ar' ? 'موافق' : 'OK'}
                       </button>
                     </div>
                   ) : (
@@ -379,7 +379,7 @@ function CartPanel({
               <div className="flex gap-2">
                 <input
                   className="input-pos flex-1 text-xs h-8"
-                  placeholder={discType === 'flat' ? 'Amount' : 'Percent'}
+                  placeholder={discType === 'flat' ? (lang === 'ar' ? 'المبلغ' : 'Amount') : (lang === 'ar' ? 'النسبة' : 'Percent')}
                   value={discValue}
                   onChange={(e) =>
                     setDiscValue(e.target.value.replace(/[^0-9.]/g, ''))
@@ -390,7 +390,7 @@ function CartPanel({
                   autoFocus
                 />
                 <button onClick={handleApplyDiscount} className="btn-primary text-xs px-3 h-8">
-                  Apply
+                  {lang === 'ar' ? 'تطبيق' : 'Apply'}
                 </button>
               </div>
             </div>
@@ -403,22 +403,22 @@ function CartPanel({
               className="text-xs text-[#a1a1aa] hover:text-[#f4f4f5] flex items-center gap-1 transition-colors"
             >
               <Tag className="w-3 h-3" />
-              Add discount
+              {t.addDiscount}
             </button>
           )}
 
           <div className="flex items-center justify-between text-sm">
-            <span className="text-[#a1a1aa]">Subtotal</span>
+            <span className="text-[#a1a1aa]">{t.subtotal}</span>
             <span className="text-[#f4f4f5] font-mono tabular-nums">{subtotal}</span>
           </div>
 
           <div className="flex items-center justify-between text-sm">
-            <span className="text-[#a1a1aa]">Tax</span>
+            <span className="text-[#a1a1aa]">{t.tax}</span>
             <span className="text-[#f4f4f5] font-mono tabular-nums">{taxAmount}</span>
           </div>
 
           <div className="flex items-center justify-between pt-1 border-t border-[#27272a]">
-            <span className="text-base font-bold text-[#f4f4f5]">Total</span>
+            <span className="text-base font-bold text-[#f4f4f5]">{t.total}</span>
             <span className="text-lg font-bold text-[#34d399] font-mono tabular-nums">
               {total}
             </span>
@@ -429,7 +429,7 @@ function CartPanel({
             className="btn-primary w-full text-sm flex items-center justify-center gap-2 mt-2 py-3"
           >
             <ShoppingCart className="w-4 h-4" />
-            Checkout & Pay
+            {t.checkoutPay}
           </button>
         </div>
       )}
@@ -511,7 +511,7 @@ function CartPanel({
                     type="text"
                     inputMode="decimal"
                     className="input-pos w-full animate-slide-in"
-                    placeholder={editItemDiscType === 'percentage' ? 'Percent (e.g. 10)' : 'Amount (e.g. 5.00)'}
+                    placeholder={editItemDiscType === 'percentage' ? (lang === 'ar' ? 'النسبة المئوية (مثلاً 10)' : 'Percent (e.g. 10)') : (lang === 'ar' ? 'المبلغ الثابت (مثلاً 5.00)' : 'Amount (e.g. 5.00)')}
                     value={editItemDiscValue}
                     onChange={(e) => setEditItemDiscValue(e.target.value.replace(/[^0-9.]/g, ''))}
                   />

@@ -9,6 +9,7 @@ import {
   addCents,
 } from '../../utils/cents';
 import { playSuccess, playCheckoutComplete } from '../../utils/audio';
+import { useLangStore } from '../../stores/langStore';
 import type { PaymentMethod, Sale } from '../../types';
 import type { Cents } from '../../types/cents';
 
@@ -34,6 +35,8 @@ function POSView() {
 
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const t = useLangStore((s) => s.t);
+  const lang = useLangStore((s) => s.lang);
 
   const handleCheckout = () => {
     if (items.length === 0) return;
@@ -144,32 +147,35 @@ function POSView() {
               ))}
               <div className="receipt-divider" />
               <div className="receipt-total-row">
-                <span>Subtotal</span>
+                <span>{t.subtotal}</span>
                 <span>{formatCents(completedSale.subtotal, currencySymbol)}</span>
               </div>
               {completedSale.discountAmount > 0 && (
                 <div className="receipt-total-row">
-                  <span>Discount</span>
+                  <span>{t.discount}</span>
                   <span>-{formatCents(completedSale.discountAmount, currencySymbol)}</span>
                 </div>
               )}
               <div className="receipt-total-row">
-                <span>Tax ({completedSale.taxRate}%)</span>
+                <span>{t.tax} ({completedSale.taxRate}%)</span>
                 <span>{formatCents(completedSale.taxAmount, currencySymbol)}</span>
               </div>
               <div className="receipt-thick-divider" />
               <div className="receipt-total-row receipt-grand-total">
-                <span>TOTAL</span>
+                <span>{lang === 'ar' ? 'المجموع النهائي' : 'TOTAL'}</span>
                 <span>{formatCents(completedSale.total, currencySymbol)}</span>
               </div>
               <div className="receipt-divider" />
               <div className="receipt-total-row text-xs">
-                <span>Paid ({completedSale.paymentMethod})</span>
+                <span>
+                  {lang === 'ar' ? 'المدفوع' : 'Paid'}{' '}
+                  ({completedSale.paymentMethod === 'visa' ? t.visa : completedSale.paymentMethod === 'cash' ? t.cash : completedSale.paymentMethod === 'card' ? t.card : t.mobilePay})
+                </span>
                 <span>{formatCents(completedSale.amountTendered, currencySymbol)}</span>
               </div>
               {completedSale.changeAmount > 0 && (
                 <div className="receipt-total-row text-xs">
-                  <span>Change</span>
+                  <span>{lang === 'ar' ? 'الباقي' : 'Change'}</span>
                   <span>{formatCents(completedSale.changeAmount, currencySymbol)}</span>
                 </div>
               )}
@@ -177,7 +183,7 @@ function POSView() {
               <div className="receipt-footer">
                 <p>{config.receiptHeader}</p>
                 <p>{config.receiptFooter}</p>
-                <p className="mt-2 text-[9px]">Thank you for your business!</p>
+                <p className="mt-2 text-[9px]">{lang === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you for your business!'}</p>
               </div>
             </div>
             <div className="flex gap-2 mt-4 print:hidden">
@@ -188,10 +194,10 @@ function POSView() {
                 }}
                 className="btn-secondary text-sm flex-1"
               >
-                Close
+                {lang === 'ar' ? 'إغلاق' : 'Close'}
               </button>
               <button onClick={handlePrintReceipt} className="btn-primary text-sm flex-1">
-                Print Receipt
+                {lang === 'ar' ? 'طباعة الإيصال' : 'Print Receipt'}
               </button>
             </div>
           </div>
