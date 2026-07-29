@@ -16,7 +16,7 @@ const sampleProducts = [
 
 export async function seedSampleData(): Promise<number> {
   let count = 0;
-  await posDB.transaction('rw', posDB.products, async () => {
+  await posDB.transaction('rw', posDB.products, posDB.bulk_discounts, async () => {
     for (const product of sampleProducts) {
       const existing = await posDB.products.get({ barcode: product.barcode });
       if (!existing) {
@@ -32,6 +32,16 @@ export async function seedSampleData(): Promise<number> {
         });
         count++;
       }
+    }
+
+    // Seed default bulk discount rule of 15% on Fresh Whole Milk (barcode 8901234567890) for quantity >= 10
+    const existingRule = await posDB.bulk_discounts.get({ barcode: '8901234567890' });
+    if (!existingRule) {
+      await posDB.bulk_discounts.add({
+        barcode: '8901234567890',
+        minQuantity: 10,
+        discountPercentage: 15,
+      });
     }
   });
   return count;

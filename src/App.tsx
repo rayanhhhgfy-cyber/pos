@@ -3,7 +3,7 @@ import { useConfigStore } from './stores/configStore';
 import { useUIStore } from './stores/uiStore';
 import { useCartStore } from './stores/cartStore';
 import { setScannerCallback } from './utils/scanner';
-import { posDB } from './db';
+import { posDB, restoreFromLocalBackupIfEmpty } from './db';
 import { playSuccess, playError } from './utils/audio';
 
 import AppShell from './components/layout/AppShell';
@@ -22,8 +22,25 @@ function App() {
   const loadSavedCart = useCartStore((s) => s.loadSavedCart);
 
   useEffect(() => {
-    loadConfig();
-    loadSavedCart();
+    const init = async () => {
+      await restoreFromLocalBackupIfEmpty();
+      try {
+        const existingRule = await posDB.bulk_discounts.get({ barcode: '8901234567890' });
+        if (!existingRule) {
+          await posDB.bulk_discounts.add({
+            barcode: '8901234567890',
+            minQuantity: 10,
+            discountPercentage: 15,
+          });
+        }
+      } catch (e) {
+        /* ignore */
+      }
+      await useCartStore.getState().loadBulkDiscountRules();
+      await loadConfig();
+      await loadSavedCart();
+    };
+    init();
   }, [loadConfig, loadSavedCart]);
 
   useEffect(() => {

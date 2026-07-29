@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { posDB } from '../../db';
+import { posDB, triggerLocalBackup } from '../../db';
 import { parsePriceToCents } from '../../utils/cents';
 import { useUIStore } from '../../stores/uiStore';
 import { useCartStore } from '../../stores/cartStore';
@@ -55,6 +55,7 @@ function QuickAddModal({ onClose }: QuickAddModalProps) {
         timestamp: Date.now(),
       });
       useCartStore.getState().addItem(barcode.trim(), name.trim(), priceCents, priceCents, newId as number);
+      await triggerLocalBackup();
       playSuccess();
       onClose();
     } catch {
@@ -99,11 +100,10 @@ function QuickAddModal({ onClose }: QuickAddModalProps) {
               <label className="block text-xs text-[#a1a1aa] mb-1">Price ($)</label>
               <input
                 className="input-pos w-full"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ''))}
                 placeholder="0.00"
               />
             </div>

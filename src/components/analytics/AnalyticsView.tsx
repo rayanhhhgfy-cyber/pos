@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { posDB } from '../../db';
+import { posDB, triggerLocalBackup } from '../../db';
 import { useConfigStore } from '../../stores/configStore';
+import { useLangStore } from '../../stores/langStore';
 import { formatCents } from '../../utils/cents';
 import type { Cents } from '../../types/cents';
-import { DollarSign, TrendingUp, ShoppingBag, AlertTriangle } from 'lucide-react';
+import { DollarSign, TrendingUp, ShoppingBag, AlertTriangle, RotateCcw } from 'lucide-react';
 
 interface AnalyticsData {
   revenueToday: number;
@@ -11,14 +12,74 @@ interface AnalyticsData {
   profitToday: number;
   transactionCount: number;
   topProducts: { name: string; quantity: number; revenue: number }[];
-  recentSales: { id: number; total: number; timestamp: number; paymentMethod: string }[];
+  recentSales: { id: number; total: number; timestamp: number; paymentMethod: string; refunded?: boolean }[];
 }
 
 function AnalyticsView() {
   const formatCurrency = useConfigStore((s) => s.formatCurrency);
+  const t = useLangStore((s) => s.t);
+  const lang = useLangStore((s) => s.lang);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const [showRefundConfirm, setShowRefundConfirm] = useState(false);
+  const [refundingSaleId, setRefundingSaleId] = useState<number | null>(null);
+
+  const handleRefundClick = (saleId: number) => {
+    setRefundingSaleId(saleId);
+    setShowRefundConfirm(true);
+  };
+
+  const confirmRefund = async () => {
+    if (refundingSaleId === null) return;
+    try {
+      const sale = await posDB.sales_history.get(refundingSaleId);
+      if (sale) {
+        // 1. Revert product stock
+        await posDB.transaction('rw', posDB.products, posDB.audit_log, async () => {
+          for (const item of sale.items) {
+            const product = await posDB.products.get({ barcode: item.barcode });
+            if (product) {
+              const newStock = product.stock + item.quantity;
+              await posDB.products.update(product.id!, {
+                stock: newStock,
+                updatedAt: Date.now(),
+              });
+              await posDB.audit_log.add({
+                type: 'stock_addition',
+                details: `Returned ${item.quantity}x ${item.name} (${item.barcode}) to inventory (Refund Sale #${refundingSaleId}) — from ${product.stock} to ${newStock}`,
+                timestamp: Date.now(),
+              });
+            }
+          }
+        });
+
+        // 2. Mark sale as refunded
+        await posDB.sales_history.update(refundingSaleId, {
+          refunded: true,
+          refundedAt: Date.now(),
+        });
+
+        // 3. Log overall audit entry
+        await posDB.audit_log.add({
+          type: 'sale_refunded',
+          details: `Refunded Sale #${refundingSaleId} for total ${formatCurrency(sale.total)}`,
+          timestamp: Date.now(),
+        });
+
+        // 4. Trigger local backup
+        await triggerLocalBackup();
+
+        // 5. Refresh analytics
+        loadAnalytics();
+      }
+    } catch (err) {
+      console.error('Failed to process refund', err);
+    }
+    setShowRefundConfirm(false);
+    setRefundingSaleId(null);
+  };
 
   const loadAnalytics = useCallback(async () => {
     setLoading(true);
@@ -41,6 +102,7 @@ function AnalyticsView() {
       const productSales = new Map<string, { quantity: number; revenue: number }>();
 
       for (const sale of todaySales) {
+        if (sale.refunded) continue;
         revenueToday += sale.total;
         for (const item of sale.items) {
           costToday += item.costPrice * item.quantity;
@@ -65,13 +127,14 @@ function AnalyticsView() {
         revenueToday,
         costToday,
         profitToday,
-        transactionCount: todaySales.length,
+        transactionCount: todaySales.filter((s) => !s.refunded).length,
         topProducts,
         recentSales: recentSales.map((s) => ({
           id: s.id as number,
           total: s.total,
           timestamp: s.timestamp,
           paymentMethod: s.paymentMethod,
+          refunded: s.refunded,
         })),
       });
     } catch {
@@ -95,27 +158,27 @@ function AnalyticsView() {
   }
 
   return (
-    <div className="h-full flex flex-col p-4 gap-4 overflow-y-auto">
+    <div className="h-full flex flex-col p-4 gap-4 overflow-y-auto" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <h1 className="text-lg font-bold tracking-wide text-[#f4f4f5] flex-shrink-0">
-        Analytics Dashboard
+        {t.analyticsDashboard}
       </h1>
 
       {/* Widget Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="card-panel p-4 bg-gradient-to-br from-[#0891b2] to-[#1d4ed8]">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-white/70">Revenue Today</span>
+            <span className="text-xs text-white/70">{t.revenueToday}</span>
             <DollarSign className="w-4 h-4 text-white/70" />
           </div>
           <p className="text-2xl font-bold text-white font-mono tabular-nums">
             {formatCurrency(data.revenueToday as Cents)}
           </p>
-          <p className="text-xs text-white/50 mt-1">{data.transactionCount} transactions</p>
+          <p className="text-xs text-white/50 mt-1">{data.transactionCount} {lang === 'ar' ? 'عمليات' : 'transactions'}</p>
         </div>
 
         <div className="card-panel p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-[#a1a1aa]">Profit Today</span>
+            <span className="text-xs text-[#a1a1aa]">{t.profitToday}</span>
             <TrendingUp className="w-4 h-4 text-[#a1a1aa]" />
           </div>
           <p
@@ -126,37 +189,37 @@ function AnalyticsView() {
             {formatCurrency(Math.max(0, data.profitToday) as Cents)}
           </p>
           <p className="text-xs text-[#52525b] mt-1">
-            Cost: {formatCurrency(data.costToday as Cents)}
+            {lang === 'ar' ? 'التكلفة' : 'Cost'}: {formatCurrency(data.costToday as Cents)}
           </p>
         </div>
 
         <div className="card-panel p-4 bg-gradient-to-br from-[#78716c] to-[#525252]">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-white/70">Transactions</span>
+            <span className="text-xs text-white/70">{t.transactions}</span>
             <ShoppingBag className="w-4 h-4 text-white/70" />
           </div>
           <p className="text-2xl font-bold text-white font-mono tabular-nums">
             {data.transactionCount}
           </p>
-          <p className="text-xs text-white/50 mt-1">Today</p>
+          <p className="text-xs text-white/50 mt-1">{lang === 'ar' ? 'اليوم' : 'Today'}</p>
         </div>
 
         <div className="card-panel p-4 bg-gradient-to-br from-[#b91c1c] to-[#9f1239]">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-white/70">Low Stock Alert</span>
+            <span className="text-xs text-white/70">{t.lowStockAlert}</span>
             <AlertTriangle className="w-4 h-4 text-white/70" />
           </div>
           <p className="text-2xl font-bold text-white font-mono tabular-nums">{lowStockCount}</p>
-          <p className="text-xs text-white/50 mt-1">Products below threshold</p>
+          <p className="text-xs text-white/50 mt-1">{lang === 'ar' ? 'المنتجات تحت حد الطلب' : 'Products below threshold'}</p>
         </div>
       </div>
 
       {/* Top Products + Recent Sales */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card-panel p-4">
-          <h3 className="text-sm font-bold text-[#f4f4f5] mb-3">Top 5 Selling Items</h3>
+          <h3 className="text-sm font-bold text-[#f4f4f5] mb-3">{t.topSelling}</h3>
           {data.topProducts.length === 0 ? (
-            <p className="text-xs text-[#52525b]">No sales today</p>
+            <p className="text-xs text-[#52525b]">{lang === 'ar' ? 'لا توجد مبيعات اليوم' : 'No sales today'}</p>
           ) : (
             <div className="space-y-2">
               {data.topProducts.map((product, i) => {
@@ -188,9 +251,9 @@ function AnalyticsView() {
         </div>
 
         <div className="card-panel p-4">
-          <h3 className="text-sm font-bold text-[#f4f4f5] mb-3">Recent Sales</h3>
+          <h3 className="text-sm font-bold text-[#f4f4f5] mb-3">{t.recentSales}</h3>
           {data.recentSales.length === 0 ? (
-            <p className="text-xs text-[#52525b]">No sales recorded yet</p>
+            <p className="text-xs text-[#52525b]">{t.noSales}</p>
           ) : (
             <div className="space-y-1.5">
               {data.recentSales.map((sale) => (
@@ -200,18 +263,34 @@ function AnalyticsView() {
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-[#a1a1aa] font-mono">#{sale.id}</span>
-                    <span className="text-[10px] uppercase text-[#52525b]">{sale.paymentMethod}</span>
+                    <span className="text-[10px] uppercase text-[#52525b]">
+                      {sale.paymentMethod === 'visa' ? t.visa : sale.paymentMethod === 'cash' ? t.cash : sale.paymentMethod === 'card' ? t.card : t.mobilePay}
+                    </span>
+                    {sale.refunded && (
+                      <span className="bg-[#b91c1c]/20 text-[#fca5a5] text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">
+                        {lang === 'ar' ? 'مسترجع' : 'Refunded'}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-[#a1a1aa]">
-                      {new Date(sale.timestamp).toLocaleTimeString('en-US', {
+                      {new Date(sale.timestamp).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
                     </span>
-                    <span className="text-xs font-bold text-[#f4f4f5] font-mono">
+                    <span className={`text-xs font-bold font-mono ${sale.refunded ? 'line-through text-[#52525b]' : 'text-[#f4f4f5]'}`}>
                       {formatCurrency(sale.total as Cents)}
                     </span>
+                    {!sale.refunded && (
+                      <button
+                        onClick={() => handleRefundClick(sale.id)}
+                        className="p-1 rounded bg-[#27272a] text-[#a1a1aa] hover:text-[#fca5a5] hover:bg-[#b91c1c]/10 transition-colors"
+                        title={lang === 'ar' ? 'استرجاع الفاتورة' : 'Refund Transaction'}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -219,6 +298,37 @@ function AnalyticsView() {
           )}
         </div>
       </div>
+
+      {/* Refund Confirmation Modal */}
+      {showRefundConfirm && refundingSaleId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+          <div className="w-full max-w-sm mx-4 card-panel p-6 animate-scale-in">
+            <h3 className="text-sm font-bold text-[#f4f4f5] mb-2">{lang === 'ar' ? 'استرجاع المعاملة؟' : 'Refund Transaction?'}</h3>
+            <p className="text-xs text-[#a1a1aa] mb-5">
+              {lang === 'ar'
+                ? `هل أنت متأكد من استرجاع الفاتورة #${refundingSaleId}؟ سيؤدي هذا إلى تعليم الفاتورة كمسترجعة، وطرح قيمتها من المبيعات، وإرجاع المنتجات إلى المخزون.`
+                : `Are you sure you want to refund Sale #${refundingSaleId}? This will mark the sale as refunded, subtract it from revenue, and restore all its products' stock back to the inventory.`}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowRefundConfirm(false);
+                  setRefundingSaleId(null);
+                }}
+                className="btn-secondary text-sm flex-1"
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={confirmRefund}
+                className="btn-danger text-sm flex-1"
+              >
+                {lang === 'ar' ? 'تأكيد الاسترجاع' : 'Confirm Refund'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

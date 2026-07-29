@@ -20,9 +20,13 @@ export interface CartItem {
   costPrice: Cents;
   quantity: number;
   lineTotal: Cents;
+  originalPrice?: Cents;
+  discountType?: 'flat' | 'percentage' | 'none';
+  discountValue?: number;
+  discountAmount?: Cents;
 }
 
-export type PaymentMethod = 'cash' | 'card' | 'mobile_pay';
+export type PaymentMethod = 'cash' | 'card' | 'mobile_pay' | 'visa';
 
 export interface Sale {
   id?: number;
@@ -39,6 +43,8 @@ export interface Sale {
   changeAmount: Cents;
   timestamp: number;
   storeName: string;
+  refunded?: boolean;
+  refundedAt?: number;
 }
 
 export interface SaleItem {
@@ -70,7 +76,7 @@ export interface ParkedCart {
 
 export interface AuditEntry {
   id?: number;
-  type: 'stock_deduction' | 'stock_addition' | 'product_created' | 'product_deleted' | 'sale_completed' | 'data_wipe' | 'data_import';
+  type: 'stock_deduction' | 'stock_addition' | 'product_created' | 'product_deleted' | 'sale_completed' | 'data_wipe' | 'data_import' | 'register_opened' | 'sale_refunded';
   details: string;
   timestamp: number;
 }

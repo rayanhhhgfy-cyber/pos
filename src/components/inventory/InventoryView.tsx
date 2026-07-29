@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { posDB } from '../../db';
+import { posDB, triggerLocalBackup } from '../../db';
 import type { Product } from '../../types';
 import { parsePriceToCents, formatCents } from '../../utils/cents';
 import { useConfigStore } from '../../stores/configStore';
@@ -14,6 +14,8 @@ function InventoryView() {
   const [modal, setModal] = useState<'none' | 'add' | 'edit'>('none');
   const [editProduct, setEditProduct] = useState<Partial<Product>>({});
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [inputPrice, setInputPrice] = useState('');
+  const [inputCostPrice, setInputCostPrice] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
 
@@ -53,18 +55,22 @@ function InventoryView() {
 
   const openAdd = () => {
     setEditProduct({ barcode: '', name: '', price: 0 as any, costPrice: 0 as any, stock: 0, category: '' });
+    setInputPrice('');
+    setInputCostPrice('');
     setModal('add');
   };
 
   const openEdit = (p: Product) => {
     setEditProduct({ ...p });
+    setInputPrice((p.price / 100).toFixed(2));
+    setInputCostPrice((p.costPrice / 100).toFixed(2));
     setModal('edit');
   };
 
   const handleSave = async () => {
     if (!editProduct.name || !editProduct.barcode) return;
-    const priceCents = parsePriceToCents(String(editProduct.price ?? 0));
-    const costCents = parsePriceToCents(String(editProduct.costPrice ?? 0));
+    const priceCents = parsePriceToCents(inputPrice || '0');
+    const costCents = parsePriceToCents(inputCostPrice || '0');
     const data = {
       barcode: editProduct.barcode!,
       name: editProduct.name!,
@@ -92,6 +98,7 @@ function InventoryView() {
       await posDB.products.update(editProduct.id, data);
     }
 
+    await triggerLocalBackup();
     setModal('none');
     setEditProduct({});
     loadProducts();
@@ -107,6 +114,7 @@ function InventoryView() {
         timestamp: Date.now(),
       });
     }
+    await triggerLocalBackup();
     setDeleteConfirm(null);
     loadProducts();
   };
@@ -265,34 +273,22 @@ function InventoryView() {
                   <label className="block text-xs text-[#a1a1aa] mb-1">Price ($)</label>
                   <input
                     className="input-pos w-full"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={
-                      typeof editProduct.price === 'number'
-                        ? (editProduct.price / 100).toFixed(2)
-                        : '0.00'
-                    }
-                    onChange={(e) =>
-                      setEditProduct((p) => ({ ...p, price: parsePriceToCents(e.target.value) }))
-                    }
+                    type="text"
+                    inputMode="decimal"
+                    value={inputPrice}
+                    onChange={(e) => setInputPrice(e.target.value.replace(/[^0-9.]/g, ''))}
+                    placeholder="0.00"
                   />
                 </div>
                 <div>
                   <label className="block text-xs text-[#a1a1aa] mb-1">Cost Price ($)</label>
                   <input
                     className="input-pos w-full"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={
-                      typeof editProduct.costPrice === 'number'
-                        ? (editProduct.costPrice / 100).toFixed(2)
-                        : '0.00'
-                    }
-                    onChange={(e) =>
-                      setEditProduct((p) => ({ ...p, costPrice: parsePriceToCents(e.target.value) }))
-                    }
+                    type="text"
+                    inputMode="decimal"
+                    value={inputCostPrice}
+                    onChange={(e) => setInputCostPrice(e.target.value.replace(/[^0-9.]/g, ''))}
+                    placeholder="0.00"
                   />
                 </div>
               </div>

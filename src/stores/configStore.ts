@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { posDB } from '../db';
+import { posDB, triggerLocalBackup } from '../db';
 import { formatCents } from '../utils/cents';
 
 export interface StoreConfigData {
@@ -72,6 +72,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       shiftStartTime: state.shiftStartTime,
       dailySaleCounter: state.dailySaleCounter,
     });
+    await triggerLocalBackup();
   },
 
   completeOnboarding: async () => {
@@ -84,6 +85,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       dailySaleCounter: 0,
     });
     set({ showOnboarding: false, shiftStartTime: now, dailySaleCounter: 0 });
+    await triggerLocalBackup();
   },
 
   incrementSaleCounter: async () => {
