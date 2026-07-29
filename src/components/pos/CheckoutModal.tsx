@@ -63,6 +63,9 @@ function CheckoutModal({
 
   const handleKeypadPress = (key: string) => {
     setCashAmount((prev) => {
+      if (key === 'backspace') {
+        return prev.slice(0, -1);
+      }
       if (key === '.' && prev.includes('.')) return prev;
       const next = prev + key;
       const parts = next.split('.');

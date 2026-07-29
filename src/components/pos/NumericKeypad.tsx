@@ -44,10 +44,7 @@ function NumericKeypad({
               <button
                 key="backspace"
                 className="keypad-btn danger"
-                onClick={() => {
-                  const current = (document.activeElement as HTMLInputElement)?.value || '';
-                  onInput(current.slice(0, -1));
-                }}
+                onClick={() => onInput('backspace')}
               >
                 <X className="w-5 h-5 mx-auto" />
               </button>
