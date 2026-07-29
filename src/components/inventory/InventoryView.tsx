@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { posDB } from '../../db';
+import { posDB, triggerLocalBackup } from '../../db';
 import type { Product } from '../../types';
 import { parsePriceToCents, formatCents } from '../../utils/cents';
 import { useConfigStore } from '../../stores/configStore';
@@ -92,6 +92,7 @@ function InventoryView() {
       await posDB.products.update(editProduct.id, data);
     }
 
+    await triggerLocalBackup();
     setModal('none');
     setEditProduct({});
     loadProducts();
@@ -107,6 +108,7 @@ function InventoryView() {
         timestamp: Date.now(),
       });
     }
+    await triggerLocalBackup();
     setDeleteConfirm(null);
     loadProducts();
   };

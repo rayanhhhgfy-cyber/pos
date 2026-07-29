@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { posDB } from '../../db';
+import { posDB, triggerLocalBackup } from '../../db';
 import { useConfigStore } from '../../stores/configStore';
 import { formatCents } from '../../utils/cents';
 import type { Cents } from '../../types/cents';
-import { DollarSign, TrendingUp, ShoppingBag, AlertTriangle } from 'lucide-react';
+import { DollarSign, TrendingUp, ShoppingBag, AlertTriangle, RotateCcw } from 'lucide-react';
 
 interface AnalyticsData {
   revenueToday: number;
@@ -11,7 +11,7 @@ interface AnalyticsData {
   profitToday: number;
   transactionCount: number;
   topProducts: { name: string; quantity: number; revenue: number }[];
-  recentSales: { id: number; total: number; timestamp: number; paymentMethod: string }[];
+  recentSales: { id: number; total: number; timestamp: number; paymentMethod: string; refunded?: boolean }[];
 }
 
 function AnalyticsView() {
@@ -19,6 +19,64 @@ function AnalyticsView() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const [showRefundConfirm, setShowRefundConfirm] = useState(false);
+  const [refundingSaleId, setRefundingSaleId] = useState<number | null>(null);
+
+  const handleRefundClick = (saleId: number) => {
+    setRefundingSaleId(saleId);
+    setShowRefundConfirm(true);
+  };
+
+  const confirmRefund = async () => {
+    if (refundingSaleId === null) return;
+    try {
+      const sale = await posDB.sales_history.get(refundingSaleId);
+      if (sale) {
+        // 1. Revert product stock
+        await posDB.transaction('rw', posDB.products, posDB.audit_log, async () => {
+          for (const item of sale.items) {
+            const product = await posDB.products.get({ barcode: item.barcode });
+            if (product) {
+              const newStock = product.stock + item.quantity;
+              await posDB.products.update(product.id!, {
+                stock: newStock,
+                updatedAt: Date.now(),
+              });
+              await posDB.audit_log.add({
+                type: 'stock_addition',
+                details: `Returned ${item.quantity}x ${item.name} (${item.barcode}) to inventory (Refund Sale #${refundingSaleId}) — from ${product.stock} to ${newStock}`,
+                timestamp: Date.now(),
+              });
+            }
+          }
+        });
+
+        // 2. Mark sale as refunded
+        await posDB.sales_history.update(refundingSaleId, {
+          refunded: true,
+          refundedAt: Date.now(),
+        });
+
+        // 3. Log overall audit entry
+        await posDB.audit_log.add({
+          type: 'sale_refunded',
+          details: `Refunded Sale #${refundingSaleId} for total ${formatCurrency(sale.total)}`,
+          timestamp: Date.now(),
+        });
+
+        // 4. Trigger local backup
+        await triggerLocalBackup();
+
+        // 5. Refresh analytics
+        loadAnalytics();
+      }
+    } catch (err) {
+      console.error('Failed to process refund', err);
+    }
+    setShowRefundConfirm(false);
+    setRefundingSaleId(null);
+  };
 
   const loadAnalytics = useCallback(async () => {
     setLoading(true);
@@ -41,6 +99,7 @@ function AnalyticsView() {
       const productSales = new Map<string, { quantity: number; revenue: number }>();
 
       for (const sale of todaySales) {
+        if (sale.refunded) continue;
         revenueToday += sale.total;
         for (const item of sale.items) {
           costToday += item.costPrice * item.quantity;
@@ -65,13 +124,14 @@ function AnalyticsView() {
         revenueToday,
         costToday,
         profitToday,
-        transactionCount: todaySales.length,
+        transactionCount: todaySales.filter((s) => !s.refunded).length,
         topProducts,
         recentSales: recentSales.map((s) => ({
           id: s.id as number,
           total: s.total,
           timestamp: s.timestamp,
           paymentMethod: s.paymentMethod,
+          refunded: s.refunded,
         })),
       });
     } catch {
@@ -201,6 +261,11 @@ function AnalyticsView() {
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-[#a1a1aa] font-mono">#{sale.id}</span>
                     <span className="text-[10px] uppercase text-[#52525b]">{sale.paymentMethod}</span>
+                    {sale.refunded && (
+                      <span className="bg-[#b91c1c]/20 text-[#fca5a5] text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">
+                        Refunded
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-[#a1a1aa]">
@@ -209,9 +274,18 @@ function AnalyticsView() {
                         minute: '2-digit',
                       })}
                     </span>
-                    <span className="text-xs font-bold text-[#f4f4f5] font-mono">
+                    <span className={`text-xs font-bold font-mono ${sale.refunded ? 'line-through text-[#52525b]' : 'text-[#f4f4f5]'}`}>
                       {formatCurrency(sale.total as Cents)}
                     </span>
+                    {!sale.refunded && (
+                      <button
+                        onClick={() => handleRefundClick(sale.id)}
+                        className="p-1 rounded bg-[#27272a] text-[#a1a1aa] hover:text-[#fca5a5] hover:bg-[#b91c1c]/10 transition-colors"
+                        title="Refund Transaction"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -219,6 +293,35 @@ function AnalyticsView() {
           )}
         </div>
       </div>
+
+      {/* Refund Confirmation Modal */}
+      {showRefundConfirm && refundingSaleId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm mx-4 card-panel p-6 animate-scale-in">
+            <h3 className="text-sm font-bold text-[#f4f4f5] mb-2">Refund Transaction?</h3>
+            <p className="text-xs text-[#a1a1aa] mb-5">
+              Are you sure you want to refund Sale #{refundingSaleId}? This will mark the sale as refunded, subtract it from revenue, and restore all its products' stock back to the inventory.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowRefundConfirm(false);
+                  setRefundingSaleId(null);
+                }}
+                className="btn-secondary text-sm flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRefund}
+                className="btn-danger text-sm flex-1"
+              >
+                Confirm Refund
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

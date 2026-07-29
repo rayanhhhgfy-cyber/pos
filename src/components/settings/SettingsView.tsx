@@ -3,7 +3,7 @@ import { useConfigStore } from '../../stores/configStore';
 import { useLangStore } from '../../stores/langStore';
 import { exportDatabase, importDatabase, wipeAllData } from '../../utils/backup';
 import { usePWAInstall } from '../../utils/pwa';
-import { posDB } from '../../db';
+import { posDB, triggerLocalBackup } from '../../db';
 import { useCartStore } from '../../stores/cartStore';
 import { playSuccess } from '../../utils/audio';
 import {
@@ -17,6 +17,7 @@ import {
   DownloadCloud,
   CheckCircle,
   Languages,
+  Plus,
 } from 'lucide-react';
 
 function SettingsView() {
@@ -29,6 +30,47 @@ function SettingsView() {
   const t = useLangStore((s) => s.t);
 
   const [storeName, setStoreName] = useState(config.storeName);
+  const [bulkRules, setBulkRules] = useState<any[]>([]);
+  const [newRuleBarcode, setNewRuleBarcode] = useState('');
+  const [newRuleMinQty, setNewRuleMinQty] = useState('10');
+  const [newRulePct, setNewRulePercentage] = useState('15');
+
+  useState(() => {
+    posDB.bulk_discounts.toArray().then((rules) => {
+      setBulkRules(rules);
+    });
+  });
+
+  const handleAddBulkRule = async () => {
+    if (!newRuleBarcode) return;
+    try {
+      await posDB.bulk_discounts.put({
+        barcode: newRuleBarcode.trim(),
+        minQuantity: parseInt(newRuleMinQty, 10) || 10,
+        discountPercentage: parseFloat(newRulePct) || 15
+      });
+      const rules = await posDB.bulk_discounts.toArray();
+      setBulkRules(rules);
+      await useCartStore.getState().loadBulkDiscountRules();
+      await triggerLocalBackup();
+      setNewRuleBarcode('');
+      alert(lang === 'ar' ? 'تمت إضافة قاعدة الخصم التلقائي!' : 'Automatic discount rule added successfully!');
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleDeleteBulkRule = async (id: number) => {
+    try {
+      await posDB.bulk_discounts.delete(id);
+      const rules = await posDB.bulk_discounts.toArray();
+      setBulkRules(rules);
+      await useCartStore.getState().loadBulkDiscountRules();
+      await triggerLocalBackup();
+    } catch {
+      /* ignore */
+    }
+  };
   const [currencySymbol, setCurrencySymbol] = useState(config.currencySymbol);
   const [taxRate, setTaxRate] = useState(String(config.taxRate));
   const [receiptHeader, setReceiptHeader] = useState(config.receiptHeader);
@@ -99,7 +141,7 @@ function SettingsView() {
     let totalRevenue = 0;
     let totalTax = 0;
     let totalItems = 0;
-    const paymentMethods: Record<string, number> = { cash: 0, card: 0, mobile_pay: 0 };
+    const paymentMethods: Record<string, number> = { cash: 0, card: 0, mobile_pay: 0, visa: 0 };
 
     for (const sale of sales) {
       totalRevenue += sale.total;
@@ -133,6 +175,7 @@ function SettingsView() {
         <div class="divider"></div>
         <div class="row"><span>Cash Transactions</span><span>${paymentMethods.cash || 0}</span></div>
         <div class="row"><span>Card Transactions</span><span>${paymentMethods.card || 0}</span></div>
+        <div class="row"><span>Visa Transactions</span><span>${paymentMethods.visa || 0}</span></div>
         <div class="row"><span>Mobile Pay</span><span>${paymentMethods.mobile_pay || 0}</span></div>
         <div class="divider"></div>
         <div class="row total"><span>Total Revenue</span><span>${formatCurrency(totalRevenue as any)}</span></div>
@@ -210,6 +253,102 @@ function SettingsView() {
           <button onClick={handleSaveSettings} disabled={saving} className="btn-primary text-sm flex items-center gap-1.5">
             <Save className="w-4 h-4" />
             {saving ? t.saving : t.saveSettings}
+          </button>
+        </div>
+      </div>
+
+      {/* Automatic Bulk Quantity Discounts */}
+      <div className="card-panel p-4">
+        <h2 className="text-sm font-bold text-[#f4f4f5] mb-3">
+          {lang === 'ar' ? 'الخصومات التلقائية للكميات الكبيرة' : 'Automatic Bulk Quantity Discounts'}
+        </h2>
+        <p className="text-xs text-[#a1a1aa] mb-3">
+          {lang === 'ar'
+            ? 'قم بإعداد نسبة خصم تلقائية لمنتج معين عند شراء كمية محددة أو أكثر (مثل خصم 15% على الحليب عند شراء 10 عبوات).'
+            : 'Apply an automatic percentage discount on a specific product when purchased in bulk (e.g. 15% off Fresh Whole Milk for 10+ units).'}
+        </p>
+
+        {/* Existing Rules List */}
+        <div className="space-y-2 mb-4">
+          {bulkRules.length === 0 ? (
+            <p className="text-xs text-[#52525b] italic">
+              {lang === 'ar' ? 'لا توجد قواعد خصم مضافة.' : 'No bulk discount rules configured yet.'}
+            </p>
+          ) : (
+            bulkRules.map((rule) => (
+              <div key={rule.id} className="flex items-center justify-between p-2.5 rounded-lg bg-[#18181b] border border-[#27272a]">
+                <div className="text-xs">
+                  <span className="font-mono font-bold text-[#f4f4f5]">{rule.barcode}</span>
+                  <span className="text-[#a1a1aa] mx-1.5">|</span>
+                  <span className="text-[#34d399] font-semibold">
+                    {lang === 'ar'
+                      ? `كمية ≥ ${rule.minQuantity} ← خصم %${rule.discountPercentage}`
+                      : `Qty ≥ ${rule.minQuantity} ← ${rule.discountPercentage}% Discount`}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleDeleteBulkRule(rule.id!)}
+                  className="p-1 rounded-md hover:bg-[#b91c1c]/20 text-[#a1a1aa] hover:text-[#fca5a5] transition-colors"
+                  title={lang === 'ar' ? 'حذف' : 'Delete'}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Add Rule Form */}
+        <div className="space-y-3 pt-3 border-t border-[#27272a]">
+          <h3 className="text-xs font-bold text-[#f4f4f5]">
+            {lang === 'ar' ? 'إضافة قاعدة جديدة' : 'Add New Bulk Rule'}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[10px] text-[#a1a1aa] mb-1">
+                {lang === 'ar' ? 'باركود المنتج' : 'Product Barcode'}
+              </label>
+              <input
+                className="input-pos w-full text-xs font-mono"
+                value={newRuleBarcode}
+                onChange={(e) => setNewRuleBarcode(e.target.value)}
+                placeholder="e.g. 8901234567890"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-[#a1a1aa] mb-1">
+                {lang === 'ar' ? 'الحد الأدنى للكمية' : 'Min Quantity'}
+              </label>
+              <input
+                className="input-pos w-full text-xs font-mono"
+                type="number"
+                min="1"
+                value={newRuleMinQty}
+                onChange={(e) => setNewRuleMinQty(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-[#a1a1aa] mb-1">
+                {lang === 'ar' ? 'نسبة الخصم (%)' : 'Discount Percentage (%)'}
+              </label>
+              <input
+                className="input-pos w-full text-xs font-mono"
+                type="number"
+                min="0.1"
+                max="100"
+                step="0.1"
+                value={newRulePct}
+                onChange={(e) => setNewRulePercentage(e.target.value)}
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleAddBulkRule}
+            disabled={!newRuleBarcode}
+            className="btn-primary w-full text-xs py-2 flex items-center justify-center gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {lang === 'ar' ? 'إضافة قاعدة الخصم' : 'Add Discount Rule'}
           </button>
         </div>
       </div>

@@ -38,9 +38,11 @@ export interface Translations {
   toggleCamera: string;
 
   selectPayment: string;
+  openRegister: string;
   cash: string;
   card: string;
   mobilePay: string;
+  visa: string;
   amountDue: string;
   cashTendered: string;
   changeDue: string;
@@ -163,9 +165,11 @@ const en: Translations = {
   toggleCamera: 'Toggle camera',
 
   selectPayment: 'Select Payment',
+  openRegister: 'Open Register',
   cash: 'Cash',
   card: 'Card',
   mobilePay: 'Mobile Pay',
+  visa: 'Visa',
   amountDue: 'Amount Due',
   cashTendered: 'Cash Tendered',
   changeDue: 'Change Due',
@@ -288,9 +292,11 @@ const ar: Translations = {
   toggleCamera: 'تبديل الكاميرا',
 
   selectPayment: 'اختر طريقة الدفع',
+  openRegister: 'فتح درج النقود',
   cash: 'نقداً',
   card: 'بطاقة',
   mobilePay: 'جوال',
+  visa: 'فيزا',
   amountDue: 'المبلغ',
   cashTendered: 'المبلغ المدفوع',
   changeDue: 'الباقي',

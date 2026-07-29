@@ -4,6 +4,7 @@ import type { CartItem, PaymentMethod } from '../../types';
 import type { Cents } from '../../types/cents';
 import { formatCents } from '../../utils/cents';
 import { useCartStore } from '../../stores/cartStore';
+import { useLangStore } from '../../stores/langStore';
 import NumericKeypad from './NumericKeypad';
 
 interface CheckoutModalProps {
@@ -33,6 +34,7 @@ function CheckoutModal({
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod | null>(null);
   const [cashAmount, setCashAmount] = useState('');
   const [processing, setProcessing] = useState(false);
+  const t = useLangStore((s) => s.t);
 
   const totalDisplay = formatCents(total, currencySymbol);
 
@@ -108,13 +110,16 @@ function CheckoutModal({
             </div>
 
             <button onClick={() => handleSelectMethod('cash')} className="btn-primary w-full text-sm py-4 flex items-center justify-center gap-2">
-              <DollarSign className="w-5 h-5" /> Cash
+              <DollarSign className="w-5 h-5" /> {t.cash}
             </button>
             <button onClick={() => handleSelectMethod('card')} className="btn-secondary w-full text-sm py-4 flex items-center justify-center gap-2">
-              <CreditCard className="w-5 h-5" /> Card
+              <CreditCard className="w-5 h-5" /> {t.card}
+            </button>
+            <button onClick={() => handleSelectMethod('visa')} className="btn-secondary w-full text-sm py-4 flex items-center justify-center gap-2 border-blue-500 hover:border-blue-400">
+              <CreditCard className="w-5 h-5 text-blue-400" /> {t.visa}
             </button>
             <button onClick={() => handleSelectMethod('mobile_pay')} className="btn-secondary w-full text-sm py-4 flex items-center justify-center gap-2">
-              <Smartphone className="w-5 h-5" /> Mobile Pay
+              <Smartphone className="w-5 h-5" /> {t.mobilePay}
             </button>
           </div>
         )}

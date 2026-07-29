@@ -56,7 +56,17 @@ function POSView() {
   };
 
   const handlePrintReceipt = () => {
-    window.print();
+    const receiptRoot = document.getElementById('receipt-root');
+    const receiptPrint = document.querySelector('.receipt-print');
+    if (receiptRoot && receiptPrint) {
+      receiptRoot.innerHTML = receiptPrint.innerHTML;
+      window.print();
+      setTimeout(() => {
+        receiptRoot.innerHTML = '';
+      }, 500);
+    } else {
+      window.print();
+    }
   };
 
   const subtotal = getSubtotal();

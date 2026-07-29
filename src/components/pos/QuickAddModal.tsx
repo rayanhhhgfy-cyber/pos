@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { posDB } from '../../db';
+import { posDB, triggerLocalBackup } from '../../db';
 import { parsePriceToCents } from '../../utils/cents';
 import { useUIStore } from '../../stores/uiStore';
 import { useCartStore } from '../../stores/cartStore';
@@ -55,6 +55,7 @@ function QuickAddModal({ onClose }: QuickAddModalProps) {
         timestamp: Date.now(),
       });
       useCartStore.getState().addItem(barcode.trim(), name.trim(), priceCents, priceCents, newId as number);
+      await triggerLocalBackup();
       playSuccess();
       onClose();
     } catch {
